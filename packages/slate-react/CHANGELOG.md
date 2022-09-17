@@ -1,5 +1,23 @@
 # slate-react
 
+## 0.82.2
+
+### Patch Changes
+
+- [#5120](https://github.com/ianstormtaylor/slate/pull/5120) [`9815bdab`](https://github.com/ianstormtaylor/slate/commit/9815bdabdd34221ed86f68b556cfa43d845e2db0) Thanks [@hueyhe](https://github.com/hueyhe)! - Fix editor selection out of sync in readonly mode
+
+* [#5100](https://github.com/ianstormtaylor/slate/pull/5100) [`8eb1972b`](https://github.com/ianstormtaylor/slate/commit/8eb1972b5b2f9489936b1759afb76574040af5a0) Thanks [@KittyGiraudel](https://github.com/KittyGiraudel)! - Add `aria-multiline` attribute to textbox editor
+
+- [#5105](https://github.com/ianstormtaylor/slate/pull/5105) [`55b95740`](https://github.com/ianstormtaylor/slate/commit/55b9574097f6008bda7ed8e3cb7aa9dd607d9f49) Thanks [@yume-chan](https://github.com/yume-chan)! - Change `Element` component to use callback-style ref to reliably track DOM node of rendered custom elements
+
+## 0.82.1
+
+### Patch Changes
+
+- [#5084](https://github.com/ianstormtaylor/slate/pull/5084) [`50de780b`](https://github.com/ianstormtaylor/slate/commit/50de780b1c32fa2c52ad88d42031748f9d3944e9) Thanks [@BitPhinix](https://github.com/BitPhinix)! - Fix selection handling with slow flush in mark placeholders on android, fix auto-capitalize after placeholder
+
+* [#5091](https://github.com/ianstormtaylor/slate/pull/5091) [`e18879e7`](https://github.com/ianstormtaylor/slate/commit/e18879e728077b09580b29e9a6683aaa66629bc5) Thanks [@e1himself](https://github.com/e1himself)! - Fix `withReact()` function type definition
+
 ## 0.82.0
 
 ### Minor Changes
