@@ -26,7 +26,11 @@ import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect
 import { ReadOnlyContext } from '../hooks/use-read-only'
 import { useSlate } from '../hooks/use-slate'
 import { TRIPLE_CLICK } from '../utils/constants'
-import { DecorateContext, getDecorateContext } from '../hooks/use-decorations'
+import {
+  DecorateContext,
+  DecorationsList,
+  useDecorateStore,
+} from '../hooks/use-decorations'
 import {
   DOMElement,
   DOMNode,
@@ -424,17 +428,6 @@ export const Editable = (props: EditableProps) => {
     }
   })
 
-  const initialDecorate = useRef(true)
-  const { decorateContext, onDecorateChange } = getDecorateContext(decorate)
-  useIsomorphicLayoutEffect(() => {
-    // don't force extra update on very first render
-    if (initialDecorate.current) {
-      initialDecorate.current = false
-      return
-    }
-    onDecorateChange(decorate)
-  }, [decorate])
-
   // Listen on the native `beforeinput` event to get real "Level 2" events. This
   // is required because React's `beforeinput` is fake and never really attaches
   // to the real event sadly. (2019/11/01)
@@ -753,7 +746,7 @@ export const Editable = (props: EditableProps) => {
     }
   }, [scheduleOnDOMSelectionChange])
 
-  const decorations = decorate([editor, []])
+  const decorations: DecorationsList = []
 
   if (
     placeholder &&
@@ -796,6 +789,13 @@ export const Editable = (props: EditableProps) => {
     }
   }
 
+  const decorateStore = useDecorateStore(
+    useCallback(entry => decorations.concat(decorate(entry)), [
+      decorate,
+      decorations,
+    ])
+  )
+
   // Update EDITOR_TO_MARK_PLACEHOLDER_MARKS in setTimeout useEffect to ensure we don't set it
   // before we receive the composition end event.
   useEffect(() => {
@@ -816,7 +816,7 @@ export const Editable = (props: EditableProps) => {
 
   return (
     <ReadOnlyContext.Provider value={readOnly}>
-      <DecorateContext.Provider value={decorateContext}>
+      <DecorateContext.Provider value={decorateStore}>
         <RestoreDOM node={ref} receivedUserInput={receivedUserInput}>
           <Component
             role={readOnly ? undefined : 'textbox'}
@@ -1604,7 +1604,6 @@ export const Editable = (props: EditableProps) => {
             )}
           >
             <Children
-              decorations={decorations}
               node={editor}
               renderElement={renderElement}
               renderPlaceholder={renderPlaceholder}

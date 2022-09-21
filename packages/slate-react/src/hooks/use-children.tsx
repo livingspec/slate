@@ -18,7 +18,6 @@ import { SelectedContext } from './use-selected'
  */
 
 const useChildren = (props: {
-  decorations: Range[]
   node: Ancestor
   renderElement?: (props: RenderElementProps) => JSX.Element
   renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element
@@ -26,7 +25,6 @@ const useChildren = (props: {
   selection: Range | null
 }) => {
   const {
-    decorations,
     node,
     renderElement,
     renderPlaceholder,
@@ -47,21 +45,11 @@ const useChildren = (props: {
     const key = ReactEditor.findKey(editor, n)
     const range = Editor.range(editor, p)
     const sel = selection && Range.intersection(selection, range)
-    const ds = []
-
-    for (const dec of decorations) {
-      const d = Range.intersection(dec, range)
-
-      if (d) {
-        ds.push(d)
-      }
-    }
 
     if (Element.isElement(n)) {
       children.push(
         <SelectedContext.Provider key={`provider-${key.id}`} value={!!sel}>
           <ElementComponent
-            decorations={ds}
             element={n}
             key={key.id}
             renderElement={renderElement}
@@ -74,7 +62,6 @@ const useChildren = (props: {
     } else {
       children.push(
         <TextComponent
-          decorations={ds}
           key={key.id}
           isLast={isLeafBlock && i === node.children.length - 1}
           parent={node}

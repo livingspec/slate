@@ -1,10 +1,9 @@
-import React, { Fragment, useCallback, useRef, useMemo } from 'react'
+import React, { useCallback } from 'react'
 import getDirection from 'direction'
-import { Editor, Path, Node, Range, Element as SlateElement } from 'slate'
+import { Editor, Node, Range, Element as SlateElement } from 'slate'
 
 import Text from './text'
 import useChildren from '../hooks/use-children'
-import { useDecorations } from '../hooks/use-decorations'
 import { ReactEditor, useSlateStatic, useReadOnly } from '..'
 import {
   NODE_TO_ELEMENT,
@@ -13,7 +12,6 @@ import {
   NODE_TO_INDEX,
   EDITOR_TO_KEY_TO_ELEMENT,
 } from '../utils/weak-maps'
-import { isDecoratorRangeListEqual } from '../utils/range-list'
 import {
   RenderElementProps,
   RenderLeafProps,
@@ -25,7 +23,6 @@ import {
  */
 
 export interface ElementProps {
-  decorations: Range[]
   element: SlateElement
   renderElement?: (props: RenderElementProps) => JSX.Element
   renderPlaceholder: (props: RenderPlaceholderProps) => JSX.Element
@@ -35,7 +32,6 @@ export interface ElementProps {
 
 const Element = (props: ElementProps) => {
   const {
-    decorations,
     element,
     renderElement = (p: RenderElementProps) => <DefaultElement {...p} />,
     renderPlaceholder,
@@ -43,7 +39,6 @@ const Element = (props: ElementProps) => {
     selection,
   } = props
   const editor = useSlateStatic()
-  const ds = useDecorations(element)
   const readOnly = useReadOnly()
   const isInline = editor.isInline(element)
   const key = ReactEditor.findKey(editor, element)
@@ -63,7 +58,6 @@ const Element = (props: ElementProps) => {
     [editor, key, element]
   )
   let children: React.ReactNode = useChildren({
-    decorations: [...ds, ...decorations],
     node: element,
     renderElement,
     renderPlaceholder,
@@ -123,7 +117,6 @@ const Element = (props: ElementProps) => {
       >
         <Text
           renderPlaceholder={renderPlaceholder}
-          decorations={[]}
           isLast={false}
           parent={element}
           text={text}
@@ -144,7 +137,6 @@ const MemoizedElement = React.memo(
     prev.element === next.element &&
     prev.renderElement === next.renderElement &&
     prev.renderLeaf === next.renderLeaf &&
-    isDecoratorRangeListEqual(prev.decorations, next.decorations) &&
     (prev.selection === next.selection ||
       (!!prev.selection &&
         !!next.selection &&
