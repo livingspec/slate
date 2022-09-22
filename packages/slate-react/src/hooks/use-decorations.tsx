@@ -1,83 +1,107 @@
-import { createContext, useContext, useRef } from 'react'
-import { BaseRange, Editor, Node, NodeEntry, Range } from 'slate'
-import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector'
-import { ReactEditor } from '..'
-import { useSlateStatic } from './use-slate-static'
+import { createContext, useCallback, useContext, useRef } from 'react'
+import { BaseRange, Editor, Node, NodeEntry, Range, Text } from 'slate'
+import { useSyncExternalStore } from 'use-sync-external-store/shim'
 import { isDecoratorRangeListEqual } from '../utils/range-list'
 import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect'
+import { ReactEditor } from '../plugin/react-editor'
 
-export type DecorationsList = Decoration[]
+export type Decorations = Decoration[]
+
+export type DecorateStore = {
+  getDecorations: (node: Text) => () => Decorations
+  subscribe: (onStoreChange: StoreChangeHandler) => () => void
+}
 
 type Decoration = BaseRange & { placeholder?: string | undefined }
-type Decorate = (entry: NodeEntry) => DecorationsList
-type DecorateChangeHandler = (decorate: Decorate) => void
-type DecorateStore = {
-  getDecorate: () => Decorate
-  addEventListener: (callback: DecorateChangeHandler) => () => void
-}
+type Decorate = (entry: NodeEntry) => Decorations
+type StoreChangeHandler = () => void
 
 /**
  * A React context for decorate context in a way to control rerenders
  */
 export const DecorateContext = createContext<DecorateStore | null>(null)
 
-export function useDecorations(node: Node): DecorationsList {
-  const editor = useSlateStatic()
+export function useDecorations(node: Text): Decorations {
   const context = useContext(DecorateContext)
-
   if (!context) {
     throw new Error(
       `The \`useDecorations\` hook must be used inside the <DecorateContext> component's context.`
     )
   }
-  const { getDecorate, addEventListener } = context
 
-  const getDecorations: (decorate: Decorate) => DecorationsList = decorate => {
-    const range = Editor.range(editor, ReactEditor.findPath(editor, node))
+  const { getDecorations, subscribe } = context
 
-    return [...Editor.nodes(editor, { at: range })]
-      .flatMap(child => decorate(child))
-      .map(decoration => Range.intersection(decoration, range))
-      .filter((intersection): intersection is Range => intersection !== null)
-  }
-
-  return useSyncExternalStoreWithSelector(
-    addEventListener,
-    getDecorate,
-    null,
-    getDecorations,
-    isDecoratorRangeListEqual
+  return useSyncExternalStore(
+    subscribe,
+    useCallback(getDecorations(node), [node])
   )
 }
 
 /**
  * Create decoration store with updating on every decorator change
  */
-export function useDecorateStore(decorate: Decorate): DecorateStore {
-  const changeHandlersRef = useRef<Set<DecorateChangeHandler>>(new Set())
+export function useDecorateStore(
+  editor: Editor,
+  decorate: Decorate
+): DecorateStore {
   const decorateRef = useRef<Decorate>(decorate)
+  const storeChangeHandlersRef = useRef<Set<StoreChangeHandler>>(new Set())
 
-  const decorateStore = useRef<DecorateStore>({
-    getDecorate: () => decorateRef.current,
-    addEventListener: callback => {
-      changeHandlersRef.current.add(callback)
+  useIsomorphicLayoutEffect(() => {
+    decorateRef.current = decorate
+    storeChangeHandlersRef.current.forEach(listener => listener())
+  }, [decorate])
+
+  const { current: decorateStore } = useRef<DecorateStore>({
+    getDecorations: node => {
+      let state: Decorations | null = null
+
+      // A decoration is a result of the node (and it's parents) decorations and the decorate function,
+      // therefore unless either changes, the last result can be reused. This selector is per node (which implies
+      // parents), so we take into account if decorate changed in the meantime.
+      const stateByDecorate = new WeakMap<Decorate, Decorations>()
+
+      const createDecorations: () => Decorations = () => {
+        const cache = stateByDecorate.get(decorateRef.current)
+        if (cache) {
+          return cache
+        }
+
+        const path = ReactEditor.findPath(editor, node)
+        const range = Editor.range(editor, path)
+        const decorations: Decorations = []
+
+        // Has performance benefits when compared to functional style
+        for (const ancestor of Node.levels(editor, path)) {
+          for (const decoration of decorateRef.current(ancestor)) {
+            const intersection = Range.intersection(decoration, range)
+            if (intersection) {
+              decorations.push(intersection)
+            }
+          }
+        }
+
+        stateByDecorate.set(decorateRef.current, decorations)
+
+        return decorations
+      }
+
       return () => {
-        changeHandlersRef.current.delete(callback)
+        const newState = createDecorations()
+        if (!state || !isDecoratorRangeListEqual(state, newState)) {
+          state = newState
+        }
+
+        return state
+      }
+    },
+    subscribe: callback => {
+      storeChangeHandlersRef.current.add(callback)
+      return () => {
+        storeChangeHandlersRef.current.delete(callback)
       }
     },
   })
 
-  const initialDecorate = useRef(true)
-  useIsomorphicLayoutEffect(() => {
-    // don't force extra update on very first render
-    if (initialDecorate.current) {
-      initialDecorate.current = false
-      return
-    }
-
-    decorateRef.current = decorate
-    changeHandlersRef.current.forEach(listener => listener(decorateRef.current))
-  }, [decorate])
-
-  return decorateStore.current
+  return decorateStore
 }

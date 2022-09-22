@@ -28,7 +28,7 @@ import { useSlate } from '../hooks/use-slate'
 import { TRIPLE_CLICK } from '../utils/constants'
 import {
   DecorateContext,
-  DecorationsList,
+  Decorations,
   useDecorateStore,
 } from '../hooks/use-decorations'
 import {
@@ -746,7 +746,7 @@ export const Editable = (props: EditableProps) => {
     }
   }, [scheduleOnDOMSelectionChange])
 
-  const decorations: DecorationsList = []
+  const decorations: Decorations = []
 
   if (
     placeholder &&
@@ -790,6 +790,7 @@ export const Editable = (props: EditableProps) => {
   }
 
   const decorateStore = useDecorateStore(
+    editor,
     useCallback(entry => decorations.concat(decorate(entry)), [
       decorate,
       decorations,
